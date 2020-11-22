@@ -1,0 +1,60 @@
+#! /usr/bin/env ruby
+
+require 'pg'
+
+def display_help
+  puts <<~HEREDOC
+
+    An expense recording system
+
+    Commands:
+    
+    add AMOUNT MEMO [DATE] - record a new expense
+    clear - delete all expenses
+    list - list all expenses
+    delete NUMBER - remove expense with id NUMBER
+    search QUERY - list expenses with a matching memo field  
+
+  HEREDOC
+end
+
+CONNECTION = PG.connect(dbname: 'expenses')
+
+def list_expenses
+    result = CONNECTION.exec('select * from expenses order by created_on ; ')
+
+  result.each do |tuple|
+    columns = [
+      tuple["id"].rjust(3),
+      tuple["created_on"].rjust(10),
+      tuple["amount"].rjust(6), 
+      tuple["memo"]
+    ]
+
+    puts columns.join(' | ')
+  end
+end
+
+def add_expense_error(amount, memo)
+  unless amount && memo
+    abort "You must provide an amount and memo."
+  end
+end
+
+def add_expense(amount, memo)
+  add_expense_error(amount, memo)
+
+  sql = "INSERT INTO expenses (amount, memo) values (#{amount}, '#{memo}')"
+  CONNECTION.exec(sql)
+end
+
+command = ARGV.first
+
+case command
+when "list"
+  list_expenses
+when "add"
+  add_expense(ARGV[1], ARGV[2])
+else
+  display_help
+end
